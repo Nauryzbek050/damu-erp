@@ -368,6 +368,8 @@ const money = {
 
 const PROFIT_ADJUSTMENT = 15900; // Бұрынғы реестрдегі, бірақ нақты D-кодқа бөлінбеген пайда
 const CURRENT_MONTH_BASE_PROFIT = 758780; // ERP іске қосылғанға дейінгі 2026 жылғы шілде пайдасы
+const PROFIT_TRACKING_STARTED_AT = new Date("2026-07-22T00:00:00+05:00");
+const BUILD_VERSION = "ДАМУ ERP v4 • 22.07.2026";
 
 export default function Home() {
   const [section, setSection] = useState<Section>("dashboard");
@@ -513,16 +515,23 @@ export default function Home() {
 
   const currentMonthProfit = useMemo(() => {
     const now = new Date();
-    return history.reduce((sum, item) => {
-      const date = new Date(item.createdAt);
-      if (
-        date.getFullYear() === now.getFullYear() &&
-        date.getMonth() === now.getMonth()
-      ) {
-        return sum + item.profit;
+
+    const newSalesProfit = history.reduce((sum, item) => {
+      const operationDate = new Date(item.createdAt);
+      const isValidDate = !Number.isNaN(operationDate.getTime());
+      const isCurrentMonth =
+        operationDate.getFullYear() === now.getFullYear() &&
+        operationDate.getMonth() === now.getMonth();
+      const isAfterTrackingStart = operationDate >= PROFIT_TRACKING_STARTED_AT;
+
+      if (!isValidDate || !isCurrentMonth || !isAfterTrackingStart) {
+        return sum;
       }
-      return sum;
-    }, CURRENT_MONTH_BASE_PROFIT);
+
+      return sum + Number(item.profit || 0);
+    }, 0);
+
+    return CURRENT_MONTH_BASE_PROFIT + newSalesProfit;
   }, [history]);
 
   async function addProduct(product: Product): Promise<boolean> {
@@ -801,6 +810,7 @@ export default function Home() {
     setHistory((current) =>
       current.filter((operation) => operation.id !== item.id),
     );
+    alert("Операция сәтті қайтарылды. Қойма мен пайда жаңартылды.");
   }
 
   async function deleteProduct(code: string) {
@@ -925,6 +935,9 @@ export default function Home() {
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 ДАМУ жүйесінің жұмыс бөлімі
+              </p>
+              <p className="mt-1 text-xs font-semibold text-blue-600">
+                {BUILD_VERSION}
               </p>
             </div>
 
@@ -1835,7 +1848,7 @@ function Profit({
               <thead>
                 <tr className="border-b text-slate-500">
                   <th className="px-3 py-3">Күні</th>
-                  <th className="px-3 py-3">Қайтару</th>
+                  <th className="sticky left-0 z-10 bg-white px-3 py-3">Әрекет</th>
                   <th className="px-3 py-3">Код</th>
                   <th className="px-3 py-3">Тауар</th>
                   <th className="px-3 py-3">Операция</th>
@@ -1847,13 +1860,13 @@ function Profit({
                 {history.map((item) => (
                   <tr key={item.id} className="border-b last:border-0">
                     <td className="px-3 py-4 text-slate-500">{item.date}</td>
-                    <td className="px-3 py-4">
+                    <td className="sticky left-0 z-10 bg-white px-3 py-4">
                       <button
                         type="button"
                         onClick={() => void onUndoOperation(item)}
                         className="whitespace-nowrap rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white hover:bg-amber-600"
                       >
-                        ↩ Қайтару
+                        ↩ Операцияны қайтару
                       </button>
                     </td>
                     <td className="px-3 py-4 font-bold text-blue-600">

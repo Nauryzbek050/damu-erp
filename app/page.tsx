@@ -1,18 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-
-type Section =
-  | "dashboard"
-  | "products"
-  | "new-product"
-  | "china"
-  | "wb"
-  | "kaspi"
-  | "profit"
-  | "settings";
-
+import { v4 as uuidv4 } from "uuid";
+import { supabase } from "./lib/supabase";
 type Product = {
+  id?: string;
   code: string;
   name: string;
   image?: string;
@@ -24,6 +16,40 @@ type Product = {
   cost: number;
   profit: number;
 };
+
+type ProductRow = {
+  id: string;
+  code: string;
+  name: string;
+  image: string | null;
+  home: number;
+  china: number;
+  wb_transit: number;
+  wb_warehouse: number;
+  kaspi_transit: number;
+  cost: number;
+  profit: number;
+};
+
+type OperationRow = {
+  id: string;
+  created_at: string;
+  product_code: string;
+  product_name: string;
+  operation: ProductOperation;
+  quantity: number;
+  profit: number;
+};
+
+type Section =
+  | "dashboard"
+  | "products"
+  | "new-product"
+  | "china"
+  | "wb"
+  | "kaspi"
+  | "profit"
+  | "settings";
 
 type ProductOperation =
   | "home-to-kaspi"
@@ -67,6 +93,50 @@ const initialProducts: Product[] = [
   { code: "D-021", name: "Безкаркасный кресло", home: 0, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 30000, profit: 35000 },
 ];
 
+function rowToProduct(row: ProductRow): Product {
+  return {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    image: row.image ?? "",
+    home: row.home ?? 0,
+    china: row.china ?? 0,
+    wbTransit: row.wb_transit ?? 0,
+    wbWarehouse: row.wb_warehouse ?? 0,
+    kaspi: row.kaspi_transit ?? 0,
+    cost: row.cost ?? 0,
+    profit: row.profit ?? 0,
+  };
+}
+
+function productToRow(product: Product) {
+  return {
+    code: product.code,
+    name: product.name,
+    image: product.image || null,
+    home: product.home,
+    china: product.china,
+    wb_transit: product.wbTransit,
+    wb_warehouse: product.wbWarehouse,
+    kaspi_transit: product.kaspi,
+    cost: product.cost,
+    profit: product.profit,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function operationRowToRecord(row: OperationRow): OperationRecord {
+  return {
+    id: row.id,
+    date: new Date(row.created_at).toLocaleString("ru-RU"),
+    code: row.product_code,
+    name: row.product_name,
+    operation: row.operation,
+    quantity: row.quantity,
+    profit: row.profit,
+  };
+}
+
 const menuItems: { id: Section; label: string }[] = [
   { id: "dashboard", label: "🏠 Dashboard" },
   { id: "products", label: "📦 Тауарлар" },
@@ -89,49 +159,121 @@ const PROFIT_ADJUSTMENT = 15900; // Бұрынғы реестрдегі, бір�
 
 export default function Home() {
   const [section, setSection] = useState<Section>("dashboard");
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [loaded, setLoaded] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [operationProduct, setOperationProduct] = useState<Product | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [history, setHistory] = useState<OperationRecord[]>([]);
-  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("damu-products-v3");
-      if (saved) {
-        setProducts(JSON.parse(saved) as Product[]);
+    let active = true;
+
+    async function checkSession() {
+      const { data, error } = await supabase.auth.getSession();
+
+      if (!active) return;
+
+      if (error) {
+        console.error("Сессияны тексеру қатесі:", error);
+        setUserEmail(null);
+        setAuthLoading(false);
+        return;
       }
-    } catch {
-      setProducts(initialProducts);
-    } finally {
-      setLoaded(true);
+
+      const email = data.session?.user.email ?? null;
+      setUserEmail(email);
+      setAuthLoading(false);
+
+      if (email) {
+        await loadCloudData();
+      }
     }
+
+    void checkSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+
+      const email = session?.user.email ?? null;
+      setUserEmail(email);
+      setAuthLoading(false);
+
+      if (event === "SIGNED_IN" && email) {
+        void loadCloudData();
+      }
+
+      if (event === "SIGNED_OUT") {
+        setProducts([]);
+        setHistory([]);
+        setLoading(false);
+        setSection("dashboard");
+      }
+    });
+
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("damu-operation-history");
-      if (saved) {
-        setHistory(JSON.parse(saved) as OperationRecord[]);
+  async function loadCloudData() {
+    console.log("loadCloudData іске қосылды");
+    setLoading(true);
+
+    const [productsResult, historyResult] = await Promise.all([
+      supabase.from("products").select("*").order("code"),
+      supabase
+        .from("operations")
+        .select("*")
+        .order("created_at", { ascending: false }),
+    ]);
+
+    if (productsResult.error) {
+      alert(`Тауарларды жүктеу қатесі: ${productsResult.error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    let cloudProducts = (productsResult.data ?? []).map((row) =>
+      rowToProduct(row as ProductRow)
+    );
+
+    if (cloudProducts.length === 0) {
+      const { data, error } = await supabase
+        .from("products")
+        .insert(initialProducts.map(productToRow))
+        .select("*")
+        .order("code");
+
+      if (error) {
+        alert(`Бастапқы тауарларды көшіру қатесі: ${error.message}`);
+        setLoading(false);
+        return;
       }
-    } catch {
+
+      cloudProducts = (data ?? []).map((row) =>
+        rowToProduct(row as ProductRow)
+      );
+    }
+
+    setProducts(cloudProducts);
+
+    if (historyResult.error) {
+      console.error("Операциялар тарихын жүктеу қатесі:", historyResult.error);
       setHistory([]);
-    } finally {
-      setHistoryLoaded(true);
+    } else {
+      setHistory(
+        (historyResult.data ?? []).map((row) =>
+          operationRowToRecord(row as OperationRow)
+        )
+      );
     }
-  }, []);
 
-  useEffect(() => {
-    if (!loaded) return;
-    localStorage.setItem("damu-products-v3", JSON.stringify(products));
-  }, [products, loaded]);
-
-  useEffect(() => {
-    if (!historyLoaded) return;
-    localStorage.setItem("damu-operation-history", JSON.stringify(history));
-  }, [history, historyLoaded]);
+    setLoading(false);
+  }
 
   const totals = useMemo(() => {
     return products.reduce(
@@ -153,7 +295,7 @@ export default function Home() {
     );
   }, [products]);
 
-  function addProduct(product: Product) {
+  async function addProduct(product: Product): Promise<boolean> {
     const exists = products.some(
       (item) => item.code.toLowerCase() === product.code.toLowerCase()
     );
@@ -163,19 +305,47 @@ export default function Home() {
       return false;
     }
 
-    setProducts((current) => [...current, product]);
+    const { data, error } = await supabase
+      .from("products")
+      .insert(productToRow(product))
+      .select("*")
+      .single();
+
+    if (error) {
+      alert(`Тауарды сақтау қатесі: ${error.message}`);
+      return false;
+    }
+
+    setProducts((current) =>
+      [...current, rowToProduct(data as ProductRow)].sort((a, b) =>
+        a.code.localeCompare(b.code)
+      )
+    );
     setSection("products");
     return true;
   }
 
-  function updateProduct(updated: Product) {
+  async function updateProduct(updated: Product) {
+    const { data, error } = await supabase
+      .from("products")
+      .update(productToRow(updated))
+      .eq(updated.id ? "id" : "code", updated.id ?? updated.code)
+      .select("*")
+      .single();
+
+    if (error) {
+      alert(`Өзгерісті сақтау қатесі: ${error.message}`);
+      return;
+    }
+
+    const saved = rowToProduct(data as ProductRow);
     setProducts((current) =>
-      current.map((item) => (item.code === updated.code ? updated : item))
+      current.map((item) => (item.code === saved.code ? saved : item))
     );
     setEditingProduct(null);
   }
 
-  function applyOperation({
+  async function applyOperation({
     code,
     operation,
     quantity,
@@ -186,95 +356,162 @@ export default function Home() {
     quantity: number;
     profit: number;
   }) {
-    let error = "";
-
-    setProducts((current) =>
-      current.map((product) => {
-        if (product.code !== code) return product;
-
-        const updated = { ...product };
-
-        if (operation === "home-to-kaspi") {
-          if (updated.home < quantity) error = "Үйдегі тауар саны жеткіліксіз.";
-          else {
-            updated.home -= quantity;
-            updated.kaspi += quantity;
-          }
-        }
-
-        if (operation === "kaspi-sold") {
-          if (updated.kaspi < quantity) error = "Kaspi жолындағы тауар саны жеткіліксіз.";
-          else {
-            updated.kaspi -= quantity;
-            updated.profit += profit;
-          }
-        }
-
-        if (operation === "home-to-wb") {
-          if (updated.home < quantity) error = "Үйдегі тауар саны жеткіліксіз.";
-          else {
-            updated.home -= quantity;
-            updated.wbTransit += quantity;
-          }
-        }
-
-        if (operation === "wb-received") {
-          if (updated.wbTransit < quantity) error = "WB жолындағы тауар саны жеткіліксіз.";
-          else {
-            updated.wbTransit -= quantity;
-            updated.wbWarehouse += quantity;
-          }
-        }
-
-        if (operation === "wb-sold") {
-          if (updated.wbWarehouse < quantity) error = "WB қоймасындағы тауар саны жеткіліксіз.";
-          else {
-            updated.wbWarehouse -= quantity;
-            updated.profit += profit;
-          }
-        }
-
-        if (operation === "china-received") {
-          if (updated.china < quantity) error = "Қытайдан келе жатқан тауар саны жеткіліксіз.";
-          else {
-            updated.china -= quantity;
-            updated.home += quantity;
-          }
-        }
-
-        return error ? product : updated;
-      })
-    );
-
-    if (error) {
-      alert(error);
+    const currentProduct = products.find((item) => item.code === code);
+    if (!currentProduct) {
+      alert("Тауар табылмады.");
       return false;
     }
 
-    const currentProduct = products.find((item) => item.code === code);
-    if (currentProduct) {
-      setHistory((current) => [
-        {
-          id: `${Date.now()}-${Math.random()}`,
-          date: new Date().toLocaleString("ru-RU"),
-          code,
-          name: currentProduct.name,
-          operation,
-          quantity,
-          profit,
-        },
-        ...current,
-      ]);
+    const updated = { ...currentProduct };
+    let errorMessage = "";
+
+    if (operation === "home-to-kaspi") {
+      if (updated.home < quantity) errorMessage = "Үйдегі тауар саны жеткіліксіз.";
+      else { updated.home -= quantity; updated.kaspi += quantity; }
+    }
+    if (operation === "kaspi-sold") {
+      if (updated.kaspi < quantity) errorMessage = "Kaspi жолындағы тауар саны жеткіліксіз.";
+      else { updated.kaspi -= quantity; updated.profit += profit; }
+    }
+    if (operation === "home-to-wb") {
+      if (updated.home < quantity) errorMessage = "Үйдегі тауар саны жеткіліксіз.";
+      else { updated.home -= quantity; updated.wbTransit += quantity; }
+    }
+    if (operation === "wb-received") {
+      if (updated.wbTransit < quantity) errorMessage = "WB жолындағы тауар саны жеткіліксіз.";
+      else { updated.wbTransit -= quantity; updated.wbWarehouse += quantity; }
+    }
+    if (operation === "wb-sold") {
+      if (updated.wbWarehouse < quantity) errorMessage = "WB қоймасындағы тауар саны жеткіліксіз.";
+      else { updated.wbWarehouse -= quantity; updated.profit += profit; }
+    }
+    if (operation === "china-received") {
+      if (updated.china < quantity) errorMessage = "Қытайдан келе жатқан тауар саны жеткіліксіз.";
+      else { updated.china -= quantity; updated.home += quantity; }
+    }
+
+    if (errorMessage) {
+      alert(errorMessage);
+      return false;
+    }
+
+    const { data: savedProduct, error: productError } = await supabase
+      .from("products")
+      .update(productToRow(updated))
+      .eq(updated.id ? "id" : "code", updated.id ?? updated.code)
+      .select("*")
+      .single();
+
+    if (productError) {
+      alert(`Операцияны сақтау қатесі: ${productError.message}`);
+      return false;
+    }
+
+    const { data: savedOperation, error: operationError } = await supabase
+      .from("operations")
+      .insert({
+        product_code: updated.code,
+        product_name: updated.name,
+        operation,
+        quantity,
+        profit,
+      })
+      .select("*")
+      .single();
+
+    if (operationError) {
+      alert(`Тауар саны сақталды, бірақ тарих жазылмады: ${operationError.message}`);
+    }
+
+    const normalized = rowToProduct(savedProduct as ProductRow);
+    setProducts((current) =>
+      current.map((item) => (item.code === normalized.code ? normalized : item))
+    );
+
+    if (savedOperation) {
+      setHistory((current) => [operationRowToRecord(savedOperation as OperationRow), ...current]);
     }
 
     setOperationProduct(null);
     return true;
   }
 
-  function deleteProduct(code: string) {
+  async function deleteProduct(code: string) {
     const confirmed = window.confirm(`${code} тауарын өшіруге сенімдісіз бе?`);
     if (!confirmed) return;
+
+    const { error } = await supabase.from("products").delete().eq("code", code);
+    if (error) {
+      alert(`Тауарды өшіру қатесі: ${error.message}`);
+      return;
+    }
     setProducts((current) => current.filter((item) => item.code !== code));
+  }
+
+  async function clearHistory() {
+    const { error } = await supabase.from("operations").delete().not("id", "is", null);
+    if (error) {
+      alert(`Тарихты тазалау қатесі: ${error.message}`);
+      return;
+    }
+    setHistory([]);
+  }
+
+  async function resetProducts() {
+    const confirmed = window.confirm("Бұлттағы барлық тауарды бастапқы базаға қайтаруға сенімдісіз бе?");
+    if (!confirmed) return;
+
+    const { error: deleteError } = await supabase.from("products").delete().not("id", "is", null);
+    if (deleteError) {
+      alert(`Базаны тазалау қатесі: ${deleteError.message}`);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("products")
+      .insert(initialProducts.map(productToRow))
+      .select("*")
+      .order("code");
+
+    if (error) {
+      alert(`Бастапқы базаны жазу қатесі: ${error.message}`);
+      return;
+    }
+
+    setProducts((data ?? []).map((row) => rowToProduct(row as ProductRow)));
+  }
+
+  async function signOut() {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      alert(`Жүйеден шығу қатесі: ${error.message}`);
+    }
+  }
+
+  if (authLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-100">
+        <div className="rounded-2xl bg-white px-8 py-6 text-center shadow-sm">
+          <p className="text-lg font-bold">Сессия тексеріліп жатыр...</p>
+          <p className="mt-2 text-sm text-slate-500">ДАМУ қауіпсіз кіру жүйесі</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!userEmail) {
+    return <LoginScreen />;
+  }
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-100">
+        <div className="rounded-2xl bg-white px-8 py-6 text-center shadow-sm">
+          <p className="text-lg font-bold">ДАМУ жүктеліп жатыр...</p>
+          <p className="mt-2 text-sm text-slate-500">Supabase бұлттық базасы</p>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -316,8 +553,17 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-sm">
-              Наурызбек
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-sm">
+                {userEmail}
+              </div>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="rounded-xl bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100"
+              >
+                Шығу
+              </button>
             </div>
           </header>
 
@@ -360,11 +606,11 @@ export default function Home() {
               products={products}
               totalProfit={totals.profit}
               history={history}
-              onClearHistory={() => setHistory([])}
+              onClearHistory={clearHistory}
             />
           )}
           {section === "settings" && (
-            <Settings onReset={() => setProducts(initialProducts)} />
+            <Settings onReset={resetProducts} />
           )}
         </section>
       </div>
@@ -391,6 +637,90 @@ export default function Home() {
           onClose={() => setPreviewImage(null)}
         />
       )}
+    </main>
+  );
+}
+
+function LoginScreen() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !password) {
+      setMessage("Email мен парольді толтырыңыз.");
+      return;
+    }
+
+    setSubmitting(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password,
+    });
+    setSubmitting(false);
+
+    if (error) {
+      setMessage("Email немесе пароль қате.");
+      return;
+    }
+  }
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-slate-950 p-4">
+      <form
+        onSubmit={submit}
+        className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl"
+      >
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-slate-950">ДАМУ</h1>
+          <p className="mt-2 text-sm text-slate-500">Бизнес басқару жүйесіне кіру</p>
+        </div>
+
+        <div className="mt-8 grid gap-4">
+          <label className="grid gap-2">
+            <span className="text-sm font-medium">Email</span>
+            <input
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+              placeholder="admin@damu.kz"
+            />
+          </label>
+
+          <label className="grid gap-2">
+            <span className="text-sm font-medium">Пароль</span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+              placeholder="Пароль"
+            />
+          </label>
+
+          {message && (
+            <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+              {message}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {submitting ? "Кіру орындалып жатыр..." : "Кіру"}
+          </button>
+        </div>
+      </form>
     </main>
   );
 }
@@ -617,7 +947,7 @@ function ProductTable({
   );
 }
 
-function NewProduct({ onAdd }: { onAdd: (product: Product) => boolean }) {
+function NewProduct({ onAdd }: { onAdd: (product: Product) => Promise<boolean> }) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [cost, setCost] = useState("");
@@ -625,7 +955,7 @@ function NewProduct({ onAdd }: { onAdd: (product: Product) => boolean }) {
   const [image, setImage] = useState("");
   const [message, setMessage] = useState("");
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
 
@@ -649,7 +979,7 @@ function NewProduct({ onAdd }: { onAdd: (product: Product) => boolean }) {
       return;
     }
 
-    const added = onAdd({
+    const added = await onAdd({
       code: cleanCode,
       name: cleanName,
       image,
@@ -711,7 +1041,7 @@ function EditProductModal({
   onClose,
 }: {
   product: Product;
-  onSave: (product: Product) => void;
+  onSave: (product: Product) => Promise<void>;
   onClose: () => void;
 }) {
   const [name, setName] = useState(product.name);
@@ -724,7 +1054,7 @@ function EditProductModal({
   const [cost, setCost] = useState(String(product.cost));
   const [profit, setProfit] = useState(String(product.profit));
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const values = {
@@ -747,7 +1077,7 @@ function EditProductModal({
       return;
     }
 
-    onSave({
+    await onSave({
       ...product,
       name: name.trim(),
       image,
@@ -823,7 +1153,7 @@ function OperationModal({
     operation: ProductOperation;
     quantity: number;
     profit: number;
-  }) => boolean;
+  }) => Promise<boolean>;
   onClose: () => void;
 }) {
   const [operation, setOperation] =
@@ -833,7 +1163,7 @@ function OperationModal({
 
   const needsProfit = operation === "kaspi-sold" || operation === "wb-sold";
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const numericQuantity = Number(quantity);
@@ -849,7 +1179,7 @@ function OperationModal({
       return;
     }
 
-    onApply({
+    await onApply({
       code: product.code,
       operation,
       quantity: numericQuantity,
@@ -1060,7 +1390,7 @@ function Profit({
   );
 }
 
-function Settings({ onReset }: { onReset: () => void }) {
+function Settings({ onReset }: { onReset: () => Promise<void> }) {
   function reset() {
     const confirmed = window.confirm(
       "Барлық өзгерісті өшіріп, бастапқы тауарларды қайтаруға сенімдісіз бе?"
@@ -1072,7 +1402,7 @@ function Settings({ onReset }: { onReset: () => void }) {
     <div className="max-w-2xl rounded-2xl bg-white p-8 shadow-sm">
       <h3 className="text-2xl font-bold">Баптаулар</h3>
       <p className="mt-3 text-slate-500">
-        Қазіргі нұсқада мәліметтер осы браузерде автоматты сақталады.
+        Мәліметтер Supabase бұлттық базасында сақталады және барлық құрылғыда бірдей көрінеді.
       </p>
 
       <button
@@ -1139,7 +1469,11 @@ function ImageUploader({
   image: string;
   onChange: (value: string) => void;
 }) {
-  function selectImage(event: React.ChangeEvent<HTMLInputElement>) {
+  const [uploading, setUploading] = useState(false);
+
+  async function selectImage(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -1148,16 +1482,43 @@ function ImageUploader({
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Сурет көлемі 2 МБ-тан аспауы керек.");
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Сурет көлемі 5 МБ-тан аспауы керек.");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      onChange(String(reader.result));
-    };
-    reader.readAsDataURL(file);
+    setUploading(true);
+
+    try {
+      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const fileName = `${uuidv4()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type,
+        });
+
+      if (uploadError) {
+        alert(`Суретті жүктеу қатесі: ${uploadError.message}`);
+        return;
+      }
+
+      const { data } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(fileName);
+
+      onChange(data.publicUrl);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Белгісіз қате";
+      alert(`Суретті жүктеу қатесі: ${message}`);
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
   }
 
   return (
@@ -1178,13 +1539,21 @@ function ImageUploader({
         )}
 
         <div className="flex flex-wrap gap-2">
-          <label className="cursor-pointer rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-            Сурет таңдау
+          <label
+            className={`cursor-pointer rounded-xl px-4 py-2 text-sm font-semibold text-white ${
+              uploading
+                ? "cursor-not-allowed bg-slate-400"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            {uploading ? "Жүктеліп жатыр..." : "Сурет таңдау"}
+
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               className="hidden"
               onChange={selectImage}
+              disabled={uploading}
             />
           </label>
 
@@ -1192,7 +1561,8 @@ function ImageUploader({
             <button
               type="button"
               onClick={() => onChange("")}
-              className="rounded-xl bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100"
+              disabled={uploading}
+              className="rounded-xl bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
             >
               Суретті өшіру
             </button>
@@ -1201,7 +1571,7 @@ function ImageUploader({
       </div>
 
       <p className="mt-3 text-xs text-slate-500">
-        JPG, PNG немесе WEBP. Ең жоғары көлемі — 2 МБ.
+        JPG, PNG немесе WEBP. Ең жоғары көлемі — 5 МБ.
       </p>
     </div>
   );

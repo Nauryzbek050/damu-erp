@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "./lib/supabase";
 type Product = {
@@ -367,9 +367,10 @@ const money = {
 };
 
 const PROFIT_ADJUSTMENT = 15900; // Бұрынғы реестрдегі, бірақ нақты D-кодқа бөлінбеген пайда
-const CURRENT_MONTH_BASE_PROFIT = 758780; // ERP іске қосылғанға дейінгі 2026 жылғы шілде пайдасы
-const PROFIT_TRACKING_STARTED_AT = new Date("2026-07-22T00:00:00+05:00");
-const BUILD_VERSION = "ДАМУ ERP v4 • 22.07.2026";
+const CURRENT_MONTH_BASE_PROFIT = 758780; // 22.07.2026 дейінгі шілде пайдасы
+const CURRENT_MONTH_BASE_YEAR = 2026;
+const CURRENT_MONTH_BASE_MONTH = 6; // JavaScript: 0 = қаңтар, 6 = шілде
+const APP_VERSION = "ДАМУ ERP v5 • 22.07.2026";
 
 export default function Home() {
   const [section, setSection] = useState<Section>("dashboard");
@@ -513,26 +514,41 @@ export default function Home() {
     );
   }, [products]);
 
+  const currentMonthOperationsProfit = useMemo(() => {
+    const now = new Date();
+    const trackingStart = new Date(2026, 6, 22, 0, 0, 0, 0).getTime();
+
+    return history.reduce((sum, item) => {
+      const date = new Date(item.createdAt);
+      const isCurrentMonth =
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth();
+
+      if (!isCurrentMonth || item.profit === 0) return sum;
+
+      const isBaseMonth =
+        now.getFullYear() === CURRENT_MONTH_BASE_YEAR &&
+        now.getMonth() === CURRENT_MONTH_BASE_MONTH;
+
+      // 22.07.2026 дейінгі пайда 758 780 ₸ бастапқы сомаға кіріп қойған.
+      // Сондықтан сол айда тек ERP іске қосылғаннан кейінгі операциялар қосылады.
+      if (isBaseMonth && date.getTime() < trackingStart) return sum;
+
+      return sum + item.profit;
+    }, 0);
+  }, [history]);
+
   const currentMonthProfit = useMemo(() => {
     const now = new Date();
+    const isBaseMonth =
+      now.getFullYear() === CURRENT_MONTH_BASE_YEAR &&
+      now.getMonth() === CURRENT_MONTH_BASE_MONTH;
 
-    const newSalesProfit = history.reduce((sum, item) => {
-      const operationDate = new Date(item.createdAt);
-      const isValidDate = !Number.isNaN(operationDate.getTime());
-      const isCurrentMonth =
-        operationDate.getFullYear() === now.getFullYear() &&
-        operationDate.getMonth() === now.getMonth();
-      const isAfterTrackingStart = operationDate >= PROFIT_TRACKING_STARTED_AT;
-
-      if (!isValidDate || !isCurrentMonth || !isAfterTrackingStart) {
-        return sum;
-      }
-
-      return sum + Number(item.profit || 0);
-    }, 0);
-
-    return CURRENT_MONTH_BASE_PROFIT + newSalesProfit;
-  }, [history]);
+    return (
+      (isBaseMonth ? CURRENT_MONTH_BASE_PROFIT : 0) +
+      currentMonthOperationsProfit
+    );
+  }, [currentMonthOperationsProfit]);
 
   async function addProduct(product: Product): Promise<boolean> {
     const exists = products.some(
@@ -810,7 +826,7 @@ export default function Home() {
     setHistory((current) =>
       current.filter((operation) => operation.id !== item.id),
     );
-    alert("Операция сәтті қайтарылды. Қойма мен пайда жаңартылды.");
+    alert("Операция сәтті қайтарылды. Қалдық пен пайда жаңартылды.");
   }
 
   async function deleteProduct(code: string) {
@@ -936,12 +952,15 @@ export default function Home() {
               <p className="mt-1 text-sm text-slate-500">
                 ДАМУ жүйесінің жұмыс бөлімі
               </p>
-              <p className="mt-1 text-xs font-semibold text-blue-600">
-                {BUILD_VERSION}
+              <p className="mt-1 text-xs font-semibold text-emerald-700 md:hidden">
+                {APP_VERSION}
               </p>
             </div>
 
             <div className="flex items-center gap-3">
+              <span className="hidden rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 md:inline-flex">
+                {APP_VERSION}
+              </span>
               <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-sm">
                 {userEmail}
               </div>
@@ -960,6 +979,7 @@ export default function Home() {
               products={products}
               totals={totals}
               currentMonthProfit={currentMonthProfit}
+              currentMonthOperationsProfit={currentMonthOperationsProfit}
             />
           )}
 
@@ -998,6 +1018,7 @@ export default function Home() {
               products={products}
               totalProfit={totals.profit}
               currentMonthProfit={currentMonthProfit}
+              currentMonthOperationsProfit={currentMonthOperationsProfit}
               history={history}
               onClearHistory={clearHistory}
               onUndoOperation={undoOperation}
@@ -1123,9 +1144,11 @@ function Dashboard({
   products,
   totals,
   currentMonthProfit,
+  currentMonthOperationsProfit,
 }: {
   products: Product[];
   currentMonthProfit: number;
+  currentMonthOperationsProfit: number;
   totals: {
     home: number;
     marketplaceTransit: number;
@@ -1145,7 +1168,7 @@ function Dashboard({
         <StatCard
           title={`${new Date().toLocaleDateString("kk-KZ", { month: "long" })} пайдасы`}
           value={`${money.format(currentMonthProfit)} ₸`}
-          note="Операциялар тарихы бойынша"
+          note={`Жаңа операциялар: ${currentMonthOperationsProfit >= 0 ? "+" : ""}${money.format(currentMonthOperationsProfit)} ₸`}
         />
         <StatCard
           title="Үйдегі тауар"
@@ -1764,6 +1787,7 @@ function Profit({
   products,
   totalProfit,
   currentMonthProfit,
+  currentMonthOperationsProfit,
   history,
   onClearHistory,
   onUndoOperation,
@@ -1771,6 +1795,7 @@ function Profit({
   products: Product[];
   totalProfit: number;
   currentMonthProfit: number;
+  currentMonthOperationsProfit: number;
   history: OperationRecord[];
   onClearHistory: () => void;
   onUndoOperation: (item: OperationRecord) => Promise<void>;
@@ -1797,7 +1822,7 @@ function Profit({
         <StatCard
           title={`${new Date().toLocaleDateString("kk-KZ", { month: "long" })} пайдасы`}
           value={`${money.format(currentMonthProfit)} ₸`}
-          note="Бастапқы айлық пайда + жаңа сатылымдар"
+          note={`Жаңа операциялар: ${currentMonthOperationsProfit >= 0 ? "+" : ""}${money.format(currentMonthOperationsProfit)} ₸`}
         />
         <StatCard
           title="Тауар саны"
@@ -1844,11 +1869,11 @@ function Profit({
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[850px] text-left text-sm">
+            <table className="w-full min-w-[760px] text-left text-sm">
               <thead>
                 <tr className="border-b text-slate-500">
                   <th className="px-3 py-3">Күні</th>
-                  <th className="sticky left-0 z-10 bg-white px-3 py-3">Әрекет</th>
+                  <th className="px-3 py-3">Қайтару</th>
                   <th className="px-3 py-3">Код</th>
                   <th className="px-3 py-3">Тауар</th>
                   <th className="px-3 py-3">Операция</th>
@@ -1860,13 +1885,13 @@ function Profit({
                 {history.map((item) => (
                   <tr key={item.id} className="border-b last:border-0">
                     <td className="px-3 py-4 text-slate-500">{item.date}</td>
-                    <td className="sticky left-0 z-10 bg-white px-3 py-4">
+                    <td className="px-3 py-4">
                       <button
                         type="button"
                         onClick={() => void onUndoOperation(item)}
                         className="whitespace-nowrap rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white hover:bg-amber-600"
                       >
-                        ↩ Операцияны қайтару
+                        ↩ Қайтару
                       </button>
                     </td>
                     <td className="px-3 py-4 font-bold text-blue-600">
@@ -1970,7 +1995,7 @@ function ImageUploader({
 }) {
   const [uploading, setUploading] = useState(false);
 
-  async function selectImage(event: React.ChangeEvent<HTMLInputElement>) {
+  async function selectImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 

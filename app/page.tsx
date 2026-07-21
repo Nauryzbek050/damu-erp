@@ -368,6 +368,7 @@ const money = {
 
 const PROFIT_ADJUSTMENT = 15900; // Бұрынғы реестрдегі, бірақ нақты D-кодқа бөлінбеген пайда
 const CURRENT_MONTH_BASE_PROFIT = 758780; // 22.07.2026 дейінгі шілде пайдасы
+const TOTAL_PROFIT_BASE = 1504780;
 const CURRENT_MONTH_BASE_YEAR = 2026;
 const CURRENT_MONTH_BASE_MONTH = 6; // JavaScript: 0 = қаңтар, 6 = шілде
 const APP_VERSION = "ДАМУ ERP v5 • 22.07.2026";
@@ -539,6 +540,18 @@ export default function Home() {
   }, [history]);
 
   const currentMonthProfit = useMemo(() => {
+  const now = new Date();
+
+  const isBaseMonth =
+    now.getFullYear() === CURRENT_MONTH_BASE_YEAR &&
+    now.getMonth() === CURRENT_MONTH_BASE_MONTH;
+
+  if (!isBaseMonth) {
+    return currentMonthOperationsProfit;
+  }
+
+  return CURRENT_MONTH_BASE_PROFIT + (totals.profit - TOTAL_PROFIT_BASE);
+}, [totals.profit, currentMonthOperationsProfit]);
     const now = new Date();
     const isBaseMonth =
       now.getFullYear() === CURRENT_MONTH_BASE_YEAR &&

@@ -61,6 +61,7 @@ type ProductOperation =
 
 type OperationRecord = {
   id: string;
+  createdAt: string;
   date: string;
   code: string;
   name: string;
@@ -70,27 +71,237 @@ type OperationRecord = {
 };
 
 const initialProducts: Product[] = [
-  { code: "D-001", name: "Замок", home: 20, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 12500, profit: 0 },
-  { code: "D-002", name: "Раскладушка PRO", home: 3, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 30000, profit: -29900 },
-  { code: "D-003", name: "JRL машинка", home: 61, china: 0, wbTransit: 16, wbWarehouse: 0, kaspi: 1, cost: 29500, profit: 719100 },
-  { code: "D-004", name: "Jump Starter", home: 31, china: 0, wbTransit: 0, wbWarehouse: 4, kaspi: 1, cost: 17400, profit: 261780 },
-  { code: "D-005", name: "NexTool", home: 2, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 0, profit: 0 },
-  { code: "D-006", name: "Первая помощь", home: 0, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 0, profit: 27700 },
-  { code: "D-007", name: "Стулья", home: 2, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 0, profit: 0 },
-  { code: "D-008", name: "Кресло-качалка (ақ)", home: 1, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 44500, profit: 38000 },
-  { code: "D-009", name: "Раскладушка ACO2", home: 0, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 0, profit: 21000 },
-  { code: "D-010", name: "Кресло кожа", home: 1, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 0, profit: 0 },
-  { code: "D-011", name: "Матрас", home: 1, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 0, profit: 0 },
-  { code: "D-012", name: "Раскладной стул-шезлонг", home: 12, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 0, profit: 0 },
-  { code: "D-013", name: "Брызговик", home: 1, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 2820, profit: 3000 },
-  { code: "D-014", name: "Haier аэрогриль", home: 2, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 0, profit: 0 },
-  { code: "D-015", name: "Раскладушка без матраса", home: 1, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 1, cost: 13700, profit: 10900 },
-  { code: "D-016", name: "Раскладушка матраспен", home: 4, china: 4, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 21000, profit: 28800 },
-  { code: "D-017", name: "PROPLAST Relax Rocking", home: 3, china: 0, wbTransit: 1, wbWarehouse: 0, kaspi: 0, cost: 27000, profit: 40000 },
-  { code: "D-018", name: "Гантель 50 кг", home: 0, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 0, profit: 307500 },
-  { code: "D-019", name: "Столик", home: 1, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 0, profit: 26000 },
-  { code: "D-020", name: "PROPLAST LUXE орындық (ақ)", home: 8, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 9700, profit: 0 },
-  { code: "D-021", name: "Безкаркасный кресло", home: 0, china: 0, wbTransit: 0, wbWarehouse: 0, kaspi: 0, cost: 30000, profit: 35000 },
+  {
+    code: "D-001",
+    name: "Замок",
+    home: 20,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 12500,
+    profit: 0,
+  },
+  {
+    code: "D-002",
+    name: "Раскладушка PRO",
+    home: 3,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 30000,
+    profit: -29900,
+  },
+  {
+    code: "D-003",
+    name: "JRL машинка",
+    home: 61,
+    china: 0,
+    wbTransit: 16,
+    wbWarehouse: 0,
+    kaspi: 1,
+    cost: 29500,
+    profit: 719100,
+  },
+  {
+    code: "D-004",
+    name: "Jump Starter",
+    home: 31,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 4,
+    kaspi: 1,
+    cost: 17400,
+    profit: 261780,
+  },
+  {
+    code: "D-005",
+    name: "NexTool",
+    home: 2,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 0,
+    profit: 0,
+  },
+  {
+    code: "D-006",
+    name: "Первая помощь",
+    home: 0,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 0,
+    profit: 27700,
+  },
+  {
+    code: "D-007",
+    name: "Стулья",
+    home: 2,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 0,
+    profit: 0,
+  },
+  {
+    code: "D-008",
+    name: "Кресло-качалка (ақ)",
+    home: 1,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 44500,
+    profit: 38000,
+  },
+  {
+    code: "D-009",
+    name: "Раскладушка ACO2",
+    home: 0,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 0,
+    profit: 21000,
+  },
+  {
+    code: "D-010",
+    name: "Кресло кожа",
+    home: 1,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 0,
+    profit: 0,
+  },
+  {
+    code: "D-011",
+    name: "Матрас",
+    home: 1,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 0,
+    profit: 0,
+  },
+  {
+    code: "D-012",
+    name: "Раскладной стул-шезлонг",
+    home: 12,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 0,
+    profit: 0,
+  },
+  {
+    code: "D-013",
+    name: "Брызговик",
+    home: 1,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 2820,
+    profit: 3000,
+  },
+  {
+    code: "D-014",
+    name: "Haier аэрогриль",
+    home: 2,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 0,
+    profit: 0,
+  },
+  {
+    code: "D-015",
+    name: "Раскладушка без матраса",
+    home: 1,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 1,
+    cost: 13700,
+    profit: 10900,
+  },
+  {
+    code: "D-016",
+    name: "Раскладушка матраспен",
+    home: 4,
+    china: 4,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 21000,
+    profit: 28800,
+  },
+  {
+    code: "D-017",
+    name: "PROPLAST Relax Rocking",
+    home: 3,
+    china: 0,
+    wbTransit: 1,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 27000,
+    profit: 40000,
+  },
+  {
+    code: "D-018",
+    name: "Гантель 50 кг",
+    home: 0,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 0,
+    profit: 307500,
+  },
+  {
+    code: "D-019",
+    name: "Столик",
+    home: 1,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 0,
+    profit: 26000,
+  },
+  {
+    code: "D-020",
+    name: "PROPLAST LUXE орындық (ақ)",
+    home: 8,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 9700,
+    profit: 0,
+  },
+  {
+    code: "D-021",
+    name: "Безкаркасный кресло",
+    home: 0,
+    china: 0,
+    wbTransit: 0,
+    wbWarehouse: 0,
+    kaspi: 0,
+    cost: 30000,
+    profit: 35000,
+  },
 ];
 
 function rowToProduct(row: ProductRow): Product {
@@ -128,6 +339,7 @@ function productToRow(product: Product) {
 function operationRowToRecord(row: OperationRow): OperationRecord {
   return {
     id: row.id,
+    createdAt: row.created_at,
     date: new Date(row.created_at).toLocaleString("ru-RU"),
     code: row.product_code,
     name: row.product_name,
@@ -155,14 +367,16 @@ const money = {
 };
 
 const PROFIT_ADJUSTMENT = 15900; // Бұрынғы реестрдегі, бірақ нақты D-кодқа бөлінбеген пайда
-
+const CURRENT_MONTH_BASE_PROFIT = 758780; // ERP іске қосылғанға дейінгі 2026 жылғы шілде пайдасы
 
 export default function Home() {
   const [section, setSection] = useState<Section>("dashboard");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [operationProduct, setOperationProduct] = useState<Product | null>(null);
+  const [operationProduct, setOperationProduct] = useState<Product | null>(
+    null,
+  );
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [history, setHistory] = useState<OperationRecord[]>([]);
   const [authLoading, setAuthLoading] = useState(true);
@@ -194,24 +408,26 @@ export default function Home() {
 
     void checkSession();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!active) return;
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (!active) return;
 
-      const email = session?.user.email ?? null;
-      setUserEmail(email);
-      setAuthLoading(false);
+        const email = session?.user.email ?? null;
+        setUserEmail(email);
+        setAuthLoading(false);
 
-      if (event === "SIGNED_IN" && email) {
-        void loadCloudData();
-      }
+        if (event === "SIGNED_IN" && email) {
+          void loadCloudData();
+        }
 
-      if (event === "SIGNED_OUT") {
-        setProducts([]);
-        setHistory([]);
-        setLoading(false);
-        setSection("dashboard");
-      }
-    });
+        if (event === "SIGNED_OUT") {
+          setProducts([]);
+          setHistory([]);
+          setLoading(false);
+          setSection("dashboard");
+        }
+      },
+    );
 
     return () => {
       active = false;
@@ -238,7 +454,7 @@ export default function Home() {
     }
 
     let cloudProducts = (productsResult.data ?? []).map((row) =>
-      rowToProduct(row as ProductRow)
+      rowToProduct(row as ProductRow),
     );
 
     if (cloudProducts.length === 0) {
@@ -255,7 +471,7 @@ export default function Home() {
       }
 
       cloudProducts = (data ?? []).map((row) =>
-        rowToProduct(row as ProductRow)
+        rowToProduct(row as ProductRow),
       );
     }
 
@@ -267,8 +483,8 @@ export default function Home() {
     } else {
       setHistory(
         (historyResult.data ?? []).map((row) =>
-          operationRowToRecord(row as OperationRow)
-        )
+          operationRowToRecord(row as OperationRow),
+        ),
       );
     }
 
@@ -291,13 +507,27 @@ export default function Home() {
         chinaTransit: 0,
         wbWarehouse: 0,
         profit: PROFIT_ADJUSTMENT,
-      }
+      },
     );
   }, [products]);
 
+  const currentMonthProfit = useMemo(() => {
+    const now = new Date();
+    return history.reduce((sum, item) => {
+      const date = new Date(item.createdAt);
+      if (
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth()
+      ) {
+        return sum + item.profit;
+      }
+      return sum;
+    }, CURRENT_MONTH_BASE_PROFIT);
+  }, [history]);
+
   async function addProduct(product: Product): Promise<boolean> {
     const exists = products.some(
-      (item) => item.code.toLowerCase() === product.code.toLowerCase()
+      (item) => item.code.toLowerCase() === product.code.toLowerCase(),
     );
 
     if (exists) {
@@ -318,8 +548,8 @@ export default function Home() {
 
     setProducts((current) =>
       [...current, rowToProduct(data as ProductRow)].sort((a, b) =>
-        a.code.localeCompare(b.code)
-      )
+        a.code.localeCompare(b.code),
+      ),
     );
     setSection("products");
     return true;
@@ -340,7 +570,7 @@ export default function Home() {
 
     const saved = rowToProduct(data as ProductRow);
     setProducts((current) =>
-      current.map((item) => (item.code === saved.code ? saved : item))
+      current.map((item) => (item.code === saved.code ? saved : item)),
     );
     setEditingProduct(null);
   }
@@ -366,28 +596,52 @@ export default function Home() {
     let errorMessage = "";
 
     if (operation === "home-to-kaspi") {
-      if (updated.home < quantity) errorMessage = "Үйдегі тауар саны жеткіліксіз.";
-      else { updated.home -= quantity; updated.kaspi += quantity; }
+      if (updated.home < quantity)
+        errorMessage = "Үйдегі тауар саны жеткіліксіз.";
+      else {
+        updated.home -= quantity;
+        updated.kaspi += quantity;
+      }
     }
     if (operation === "kaspi-sold") {
-      if (updated.kaspi < quantity) errorMessage = "Kaspi жолындағы тауар саны жеткіліксіз.";
-      else { updated.kaspi -= quantity; updated.profit += profit; }
+      if (updated.kaspi < quantity)
+        errorMessage = "Kaspi жолындағы тауар саны жеткіліксіз.";
+      else {
+        updated.kaspi -= quantity;
+        updated.profit += profit;
+      }
     }
     if (operation === "home-to-wb") {
-      if (updated.home < quantity) errorMessage = "Үйдегі тауар саны жеткіліксіз.";
-      else { updated.home -= quantity; updated.wbTransit += quantity; }
+      if (updated.home < quantity)
+        errorMessage = "Үйдегі тауар саны жеткіліксіз.";
+      else {
+        updated.home -= quantity;
+        updated.wbTransit += quantity;
+      }
     }
     if (operation === "wb-received") {
-      if (updated.wbTransit < quantity) errorMessage = "WB жолындағы тауар саны жеткіліксіз.";
-      else { updated.wbTransit -= quantity; updated.wbWarehouse += quantity; }
+      if (updated.wbTransit < quantity)
+        errorMessage = "WB жолындағы тауар саны жеткіліксіз.";
+      else {
+        updated.wbTransit -= quantity;
+        updated.wbWarehouse += quantity;
+      }
     }
     if (operation === "wb-sold") {
-      if (updated.wbWarehouse < quantity) errorMessage = "WB қоймасындағы тауар саны жеткіліксіз.";
-      else { updated.wbWarehouse -= quantity; updated.profit += profit; }
+      if (updated.wbWarehouse < quantity)
+        errorMessage = "WB қоймасындағы тауар саны жеткіліксіз.";
+      else {
+        updated.wbWarehouse -= quantity;
+        updated.profit += profit;
+      }
     }
     if (operation === "china-received") {
-      if (updated.china < quantity) errorMessage = "Қытайдан келе жатқан тауар саны жеткіліксіз.";
-      else { updated.china -= quantity; updated.home += quantity; }
+      if (updated.china < quantity)
+        errorMessage = "Қытайдан келе жатқан тауар саны жеткіліксіз.";
+      else {
+        updated.china -= quantity;
+        updated.home += quantity;
+      }
     }
 
     if (errorMessage) {
@@ -420,20 +674,133 @@ export default function Home() {
       .single();
 
     if (operationError) {
-      alert(`Тауар саны сақталды, бірақ тарих жазылмады: ${operationError.message}`);
+      alert(
+        `Тауар саны сақталды, бірақ тарих жазылмады: ${operationError.message}`,
+      );
     }
 
     const normalized = rowToProduct(savedProduct as ProductRow);
     setProducts((current) =>
-      current.map((item) => (item.code === normalized.code ? normalized : item))
+      current.map((item) =>
+        item.code === normalized.code ? normalized : item,
+      ),
     );
 
     if (savedOperation) {
-      setHistory((current) => [operationRowToRecord(savedOperation as OperationRow), ...current]);
+      setHistory((current) => [
+        operationRowToRecord(savedOperation as OperationRow),
+        ...current,
+      ]);
     }
 
     setOperationProduct(null);
     return true;
+  }
+
+  async function undoOperation(item: OperationRecord) {
+    const confirmed = window.confirm(
+      `${item.code} — ${item.quantity} дана операциясын болдырмауға сенімдісіз бе?`,
+    );
+    if (!confirmed) return;
+
+    const currentProduct = products.find(
+      (product) => product.code === item.code,
+    );
+    if (!currentProduct) {
+      alert("Бұл операцияға қатысты тауар табылмады.");
+      return;
+    }
+
+    const restored = { ...currentProduct };
+    let errorMessage = "";
+
+    if (item.operation === "home-to-kaspi") {
+      if (restored.kaspi < item.quantity)
+        errorMessage = "Kaspi жолында қайтаруға жеткілікті тауар жоқ.";
+      else {
+        restored.kaspi -= item.quantity;
+        restored.home += item.quantity;
+      }
+    }
+    if (item.operation === "kaspi-sold") {
+      restored.kaspi += item.quantity;
+      restored.profit -= item.profit;
+    }
+    if (item.operation === "home-to-wb") {
+      if (restored.wbTransit < item.quantity)
+        errorMessage = "WB жолында қайтаруға жеткілікті тауар жоқ.";
+      else {
+        restored.wbTransit -= item.quantity;
+        restored.home += item.quantity;
+      }
+    }
+    if (item.operation === "wb-received") {
+      if (restored.wbWarehouse < item.quantity)
+        errorMessage = "WB қоймасында қайтаруға жеткілікті тауар жоқ.";
+      else {
+        restored.wbWarehouse -= item.quantity;
+        restored.wbTransit += item.quantity;
+      }
+    }
+    if (item.operation === "wb-sold") {
+      restored.wbWarehouse += item.quantity;
+      restored.profit -= item.profit;
+    }
+    if (item.operation === "china-received") {
+      if (restored.home < item.quantity)
+        errorMessage = "Үйде Қытай жолына қайтаруға жеткілікті тауар жоқ.";
+      else {
+        restored.home -= item.quantity;
+        restored.china += item.quantity;
+      }
+    }
+
+    if (errorMessage) {
+      alert(
+        errorMessage +
+          " Алдымен одан кейін жасалған операцияларды кері қайтарыңыз.",
+      );
+      return;
+    }
+
+    const { data: savedProduct, error: productError } = await supabase
+      .from("products")
+      .update(productToRow(restored))
+      .eq(restored.id ? "id" : "code", restored.id ?? restored.code)
+      .select("*")
+      .single();
+
+    if (productError) {
+      alert(`Операцияны болдырмау қатесі: ${productError.message}`);
+      return;
+    }
+
+    const { error: deleteError } = await supabase
+      .from("operations")
+      .delete()
+      .eq("id", item.id);
+
+    if (deleteError) {
+      await supabase
+        .from("products")
+        .update(productToRow(currentProduct))
+        .eq(
+          currentProduct.id ? "id" : "code",
+          currentProduct.id ?? currentProduct.code,
+        );
+      alert(`Тарих жазбасын өшіру қатесі: ${deleteError.message}`);
+      return;
+    }
+
+    const normalized = rowToProduct(savedProduct as ProductRow);
+    setProducts((current) =>
+      current.map((product) =>
+        product.code === normalized.code ? normalized : product,
+      ),
+    );
+    setHistory((current) =>
+      current.filter((operation) => operation.id !== item.id),
+    );
   }
 
   async function deleteProduct(code: string) {
@@ -449,7 +816,10 @@ export default function Home() {
   }
 
   async function clearHistory() {
-    const { error } = await supabase.from("operations").delete().not("id", "is", null);
+    const { error } = await supabase
+      .from("operations")
+      .delete()
+      .not("id", "is", null);
     if (error) {
       alert(`Тарихты тазалау қатесі: ${error.message}`);
       return;
@@ -458,10 +828,15 @@ export default function Home() {
   }
 
   async function resetProducts() {
-    const confirmed = window.confirm("Бұлттағы барлық тауарды бастапқы базаға қайтаруға сенімдісіз бе?");
+    const confirmed = window.confirm(
+      "Бұлттағы барлық тауарды бастапқы базаға қайтаруға сенімдісіз бе?",
+    );
     if (!confirmed) return;
 
-    const { error: deleteError } = await supabase.from("products").delete().not("id", "is", null);
+    const { error: deleteError } = await supabase
+      .from("products")
+      .delete()
+      .not("id", "is", null);
     if (deleteError) {
       alert(`Базаны тазалау қатесі: ${deleteError.message}`);
       return;
@@ -493,7 +868,9 @@ export default function Home() {
       <main className="flex min-h-screen items-center justify-center bg-slate-100">
         <div className="rounded-2xl bg-white px-8 py-6 text-center shadow-sm">
           <p className="text-lg font-bold">Сессия тексеріліп жатыр...</p>
-          <p className="mt-2 text-sm text-slate-500">ДАМУ қауіпсіз кіру жүйесі</p>
+          <p className="mt-2 text-sm text-slate-500">
+            ДАМУ қауіпсіз кіру жүйесі
+          </p>
         </div>
       </main>
     );
@@ -520,9 +897,7 @@ export default function Home() {
         <aside className="w-64 shrink-0 bg-slate-950 p-5 text-white">
           <div className="mb-8">
             <h1 className="text-2xl font-bold">ДАМУ</h1>
-            <p className="mt-1 text-sm text-slate-400">
-              Бизнес басқару жүйесі
-            </p>
+            <p className="mt-1 text-sm text-slate-400">Бизнес басқару жүйесі</p>
           </div>
 
           <nav className="space-y-2">
@@ -568,7 +943,11 @@ export default function Home() {
           </header>
 
           {section === "dashboard" && (
-            <Dashboard products={products} totals={totals} />
+            <Dashboard
+              products={products}
+              totals={totals}
+              currentMonthProfit={currentMonthProfit}
+            />
           )}
 
           {section === "products" && (
@@ -605,13 +984,13 @@ export default function Home() {
             <Profit
               products={products}
               totalProfit={totals.profit}
+              currentMonthProfit={currentMonthProfit}
               history={history}
               onClearHistory={clearHistory}
+              onUndoOperation={undoOperation}
             />
           )}
-          {section === "settings" && (
-            <Settings onReset={resetProducts} />
-          )}
+          {section === "settings" && <Settings onReset={resetProducts} />}
         </section>
       </div>
 
@@ -678,7 +1057,9 @@ function LoginScreen() {
       >
         <div className="text-center">
           <h1 className="text-3xl font-bold text-slate-950">ДАМУ</h1>
-          <p className="mt-2 text-sm text-slate-500">Бизнес басқару жүйесіне кіру</p>
+          <p className="mt-2 text-sm text-slate-500">
+            Бизнес басқару жүйесіне кіру
+          </p>
         </div>
 
         <div className="mt-8 grid gap-4">
@@ -728,8 +1109,10 @@ function LoginScreen() {
 function Dashboard({
   products,
   totals,
+  currentMonthProfit,
 }: {
   products: Product[];
+  currentMonthProfit: number;
   totals: {
     home: number;
     marketplaceTransit: number;
@@ -747,9 +1130,9 @@ function Dashboard({
           note="Барлық тауар бойынша"
         />
         <StatCard
-          title="Шілде пайдасы"
-          value="758 780 ₸"
-          note="Ағымдағы ай"
+          title={`${new Date().toLocaleDateString("kk-KZ", { month: "long" })} пайдасы`}
+          value={`${money.format(currentMonthProfit)} ₸`}
+          note="Операциялар тарихы бойынша"
         />
         <StatCard
           title="Үйдегі тауар"
@@ -782,8 +1165,9 @@ function Dashboard({
       </div>
 
       <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        Жалпы пайдаға бұрынғы реестрден <strong>15 900 ₸</strong> түзету қосылды.
-        Бұл сома нақты D-кодқа бөлінген кезде түзету автоматты түрде алынып тасталады.
+        Жалпы пайдаға бұрынғы реестрден <strong>15 900 ₸</strong> түзету
+        қосылды. Бұл сома нақты D-кодқа бөлінген кезде түзету автоматты түрде
+        алынып тасталады.
       </div>
     </>
   );
@@ -947,7 +1331,11 @@ function ProductTable({
   );
 }
 
-function NewProduct({ onAdd }: { onAdd: (product: Product) => Promise<boolean> }) {
+function NewProduct({
+  onAdd,
+}: {
+  onAdd: (product: Product) => Promise<boolean>;
+}) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [cost, setCost] = useState("");
@@ -1012,11 +1400,33 @@ function NewProduct({ onAdd }: { onAdd: (product: Product) => Promise<boolean> }
       </p>
 
       <div className="mt-6 grid gap-4">
-        <Input label="Тауар коды" placeholder="D-022" value={code} onChange={setCode} />
-        <Input label="Тауар атауы" placeholder="Тауар атауы" value={name} onChange={setName} />
+        <Input
+          label="Тауар коды"
+          placeholder="D-022"
+          value={code}
+          onChange={setCode}
+        />
+        <Input
+          label="Тауар атауы"
+          placeholder="Тауар атауы"
+          value={name}
+          onChange={setName}
+        />
         <ImageUploader image={image} onChange={setImage} />
-        <Input label="Өзіндік құны" placeholder="0" value={cost} onChange={setCost} type="number" />
-        <Input label="Үйдегі саны" placeholder="0" value={home} onChange={setHome} type="number" />
+        <Input
+          label="Өзіндік құны"
+          placeholder="0"
+          value={cost}
+          onChange={setCost}
+          type="number"
+        />
+        <Input
+          label="Үйдегі саны"
+          placeholder="0"
+          value={home}
+          onChange={setHome}
+          type="number"
+        />
 
         {message && (
           <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -1069,9 +1479,7 @@ function EditProductModal({
 
     if (
       !name.trim() ||
-      Object.values(values).some(
-        (value) => Number.isNaN(value) || value < 0
-      )
+      Object.values(values).some((value) => Number.isNaN(value) || value < 0)
     ) {
       alert("Барлық мәнді дұрыс толтырыңыз.");
       return;
@@ -1111,14 +1519,61 @@ function EditProductModal({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Input label="Тауар атауы" placeholder="" value={name} onChange={setName} />
-          <Input label="Өзіндік құны" placeholder="0" value={cost} onChange={setCost} type="number" />
-          <Input label="🏠 Үйде" placeholder="0" value={home} onChange={setHome} type="number" />
-          <Input label="🚛 Қытай → Үй" placeholder="0" value={china} onChange={setChina} type="number" />
-          <Input label="🟣 WB жолда" placeholder="0" value={wbTransit} onChange={setWbTransit} type="number" />
-          <Input label="🏢 WB қойма" placeholder="0" value={wbWarehouse} onChange={setWbWarehouse} type="number" />
-          <Input label="🟠 Kaspi жолда" placeholder="0" value={kaspi} onChange={setKaspi} type="number" />
-          <Input label="Жиналған пайда" placeholder="0" value={profit} onChange={setProfit} type="number" />
+          <Input
+            label="Тауар атауы"
+            placeholder=""
+            value={name}
+            onChange={setName}
+          />
+          <Input
+            label="Өзіндік құны"
+            placeholder="0"
+            value={cost}
+            onChange={setCost}
+            type="number"
+          />
+          <Input
+            label="🏠 Үйде"
+            placeholder="0"
+            value={home}
+            onChange={setHome}
+            type="number"
+          />
+          <Input
+            label="🚛 Қытай → Үй"
+            placeholder="0"
+            value={china}
+            onChange={setChina}
+            type="number"
+          />
+          <Input
+            label="🟣 WB жолда"
+            placeholder="0"
+            value={wbTransit}
+            onChange={setWbTransit}
+            type="number"
+          />
+          <Input
+            label="🏢 WB қойма"
+            placeholder="0"
+            value={wbWarehouse}
+            onChange={setWbWarehouse}
+            type="number"
+          />
+          <Input
+            label="🟠 Kaspi жолда"
+            placeholder="0"
+            value={kaspi}
+            onChange={setKaspi}
+            type="number"
+          />
+          <Input
+            label="Жиналған пайда"
+            placeholder="0"
+            value={profit}
+            onChange={setProfit}
+            type="number"
+          />
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
@@ -1141,7 +1596,6 @@ function EditProductModal({
   );
 }
 
-
 function OperationModal({
   product,
   onApply,
@@ -1156,8 +1610,7 @@ function OperationModal({
   }) => Promise<boolean>;
   onClose: () => void;
 }) {
-  const [operation, setOperation] =
-    useState<ProductOperation>("home-to-kaspi");
+  const [operation, setOperation] = useState<ProductOperation>("home-to-kaspi");
   const [quantity, setQuantity] = useState("1");
   const [profit, setProfit] = useState("0");
 
@@ -1211,11 +1664,21 @@ function OperationModal({
         </div>
 
         <div className="mb-5 grid grid-cols-2 gap-3 text-sm">
-          <div className="rounded-xl bg-slate-50 p-3">🏠 Үйде: {product.home}</div>
-          <div className="rounded-xl bg-slate-50 p-3">🚛 Қытай: {product.china}</div>
-          <div className="rounded-xl bg-slate-50 p-3">🟣 WB жолда: {product.wbTransit}</div>
-          <div className="rounded-xl bg-slate-50 p-3">🏢 WB қойма: {product.wbWarehouse}</div>
-          <div className="rounded-xl bg-slate-50 p-3">🟠 Kaspi: {product.kaspi}</div>
+          <div className="rounded-xl bg-slate-50 p-3">
+            🏠 Үйде: {product.home}
+          </div>
+          <div className="rounded-xl bg-slate-50 p-3">
+            🚛 Қытай: {product.china}
+          </div>
+          <div className="rounded-xl bg-slate-50 p-3">
+            🟣 WB жолда: {product.wbTransit}
+          </div>
+          <div className="rounded-xl bg-slate-50 p-3">
+            🏢 WB қойма: {product.wbWarehouse}
+          </div>
+          <div className="rounded-xl bg-slate-50 p-3">
+            🟠 Kaspi: {product.kaspi}
+          </div>
           <div className="rounded-xl bg-slate-50 p-3">
             💰 Пайда: {money.format(product.profit)} ₸
           </div>
@@ -1287,13 +1750,17 @@ function OperationModal({
 function Profit({
   products,
   totalProfit,
+  currentMonthProfit,
   history,
   onClearHistory,
+  onUndoOperation,
 }: {
   products: Product[];
   totalProfit: number;
+  currentMonthProfit: number;
   history: OperationRecord[];
   onClearHistory: () => void;
+  onUndoOperation: (item: OperationRecord) => Promise<void>;
 }) {
   const best = [...products].sort((a, b) => b.profit - a.profit)[0];
 
@@ -1308,11 +1775,16 @@ function Profit({
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Жалпы пайда"
           value={`${money.format(totalProfit)} ₸`}
           note="Барлық кезең"
+        />
+        <StatCard
+          title={`${new Date().toLocaleDateString("kk-KZ", { month: "long" })} пайдасы`}
+          value={`${money.format(currentMonthProfit)} ₸`}
+          note="Бастапқы айлық пайда + жаңа сатылымдар"
         />
         <StatCard
           title="Тауар саны"
@@ -1338,7 +1810,11 @@ function Profit({
           {history.length > 0 && (
             <button
               onClick={() => {
-                if (window.confirm("Операциялар тарихын толық өшіруге сенімдісіз бе?")) {
+                if (
+                  window.confirm(
+                    "Операциялар тарихын толық өшіруге сенімдісіз бе?",
+                  )
+                ) {
                   onClearHistory();
                 }
               }}
@@ -1359,6 +1835,7 @@ function Profit({
               <thead>
                 <tr className="border-b text-slate-500">
                   <th className="px-3 py-3">Күні</th>
+                  <th className="px-3 py-3">Қайтару</th>
                   <th className="px-3 py-3">Код</th>
                   <th className="px-3 py-3">Тауар</th>
                   <th className="px-3 py-3">Операция</th>
@@ -1370,6 +1847,15 @@ function Profit({
                 {history.map((item) => (
                   <tr key={item.id} className="border-b last:border-0">
                     <td className="px-3 py-4 text-slate-500">{item.date}</td>
+                    <td className="px-3 py-4">
+                      <button
+                        type="button"
+                        onClick={() => void onUndoOperation(item)}
+                        className="whitespace-nowrap rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white hover:bg-amber-600"
+                      >
+                        ↩ Қайтару
+                      </button>
+                    </td>
                     <td className="px-3 py-4 font-bold text-blue-600">
                       {item.code}
                     </td>
@@ -1393,7 +1879,7 @@ function Profit({
 function Settings({ onReset }: { onReset: () => Promise<void> }) {
   function reset() {
     const confirmed = window.confirm(
-      "Барлық өзгерісті өшіріп, бастапқы тауарларды қайтаруға сенімдісіз бе?"
+      "Барлық өзгерісті өшіріп, бастапқы тауарларды қайтаруға сенімдісіз бе?",
     );
     if (confirmed) onReset();
   }
@@ -1402,7 +1888,8 @@ function Settings({ onReset }: { onReset: () => Promise<void> }) {
     <div className="max-w-2xl rounded-2xl bg-white p-8 shadow-sm">
       <h3 className="text-2xl font-bold">Баптаулар</h3>
       <p className="mt-3 text-slate-500">
-        Мәліметтер Supabase бұлттық базасында сақталады және барлық құрылғыда бірдей көрінеді.
+        Мәліметтер Supabase бұлттық базасында сақталады және барлық құрылғыда
+        бірдей көрінеді.
       </p>
 
       <button
@@ -1461,7 +1948,6 @@ function Input({
   );
 }
 
-
 function ImageUploader({
   image,
   onChange,
@@ -1471,9 +1957,7 @@ function ImageUploader({
 }) {
   const [uploading, setUploading] = useState(false);
 
-  async function selectImage(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
+  async function selectImage(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -1512,8 +1996,7 @@ function ImageUploader({
 
       onChange(data.publicUrl);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Белгісіз қате";
+      const message = error instanceof Error ? error.message : "Белгісіз қате";
       alert(`Суретті жүктеу қатесі: ${message}`);
     } finally {
       setUploading(false);

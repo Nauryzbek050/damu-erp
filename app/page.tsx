@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "./lib/supabase";
 type Product = {
@@ -310,13 +310,13 @@ function rowToProduct(row: ProductRow): Product {
     code: row.code,
     name: row.name,
     image: row.image ?? "",
-    home: row.home ?? 0,
-    china: row.china ?? 0,
-    wbTransit: row.wb_transit ?? 0,
-    wbWarehouse: row.wb_warehouse ?? 0,
-    kaspi: row.kaspi_transit ?? 0,
-    cost: row.cost ?? 0,
-    profit: row.profit ?? 0,
+    home: Number(row.home ?? 0),
+    china: Number(row.china ?? 0),
+    wbTransit: Number(row.wb_transit ?? 0),
+    wbWarehouse: Number(row.wb_warehouse ?? 0),
+    kaspi: Number(row.kaspi_transit ?? 0),
+    cost: Number(row.cost ?? 0),
+    profit: Number(row.profit ?? 0),
   };
 }
 
@@ -344,8 +344,8 @@ function operationRowToRecord(row: OperationRow): OperationRecord {
     code: row.product_code,
     name: row.product_name,
     operation: row.operation,
-    quantity: row.quantity,
-    profit: row.profit,
+    quantity: Number(row.quantity ?? 0),
+    profit: Number(row.profit ?? 0),
   };
 }
 
@@ -367,11 +367,10 @@ const money = {
 };
 
 const PROFIT_ADJUSTMENT = 15900; // Бұрынғы реестрдегі, бірақ нақты D-кодқа бөлінбеген пайда
-const CURRENT_MONTH_BASE_PROFIT = 758780; // 22.07.2026 дейінгі шілде пайдасы
-const TOTAL_PROFIT_BASE = 1504780;
+const CURRENT_MONTH_BASE_PROFIT = 758780; // ERP іске қосылғанға дейінгі 2026 жылғы шілде пайдасы
+const TOTAL_PROFIT_BASE = 1504780; // Сол сәттегі жалпы пайда
 const CURRENT_MONTH_BASE_YEAR = 2026;
-const CURRENT_MONTH_BASE_MONTH = 6; // JavaScript: 0 = қаңтар, 6 = шілде
-const APP_VERSION = "ДАМУ ERP v5 • 22.07.2026";
+const CURRENT_MONTH_BASE_MONTH = 6; // JavaScript: шілде = 6
 
 export default function Home() {
   const [section, setSection] = useState<Section>("dashboard");
@@ -515,53 +514,32 @@ export default function Home() {
     );
   }, [products]);
 
-  const currentMonthOperationsProfit = useMemo(() => {
+  const currentMonthProfit = useMemo(() => {
     const now = new Date();
-    const trackingStart = new Date(2026, 6, 22, 0, 0, 0, 0).getTime();
+    const isBaseMonth =
+      now.getFullYear() === CURRENT_MONTH_BASE_YEAR &&
+      now.getMonth() === CURRENT_MONTH_BASE_MONTH;
 
+    if (isBaseMonth) {
+      // Шілдедегі бастапқы 758 780 ₸ сомасына ERP-дегі жалпы пайданың
+      // 1 504 780 ₸ бастапқы мәнінен кейінгі нақты өзгерісін қосамыз.
+      // Number(...) Supabase numeric мәні мәтін болып келсе де,
+      // қосу амалының мәтінге айналып кетуіне жол бермейді.
+      const totalProfit = Number(totals.profit) || 0;
+      const profitDelta = totalProfit - TOTAL_PROFIT_BASE;
+      return CURRENT_MONTH_BASE_PROFIT + profitDelta;
+    }
+
+    // Келесі айлардан бастап айлық пайда тек сол айдағы сатылымдардан есептеледі.
     return history.reduce((sum, item) => {
       const date = new Date(item.createdAt);
       const isCurrentMonth =
         date.getFullYear() === now.getFullYear() &&
         date.getMonth() === now.getMonth();
 
-      if (!isCurrentMonth || item.profit === 0) return sum;
-
-      const isBaseMonth =
-        now.getFullYear() === CURRENT_MONTH_BASE_YEAR &&
-        now.getMonth() === CURRENT_MONTH_BASE_MONTH;
-
-      // 22.07.2026 дейінгі пайда 758 780 ₸ бастапқы сомаға кіріп қойған.
-      // Сондықтан сол айда тек ERP іске қосылғаннан кейінгі операциялар қосылады.
-      if (isBaseMonth && date.getTime() < trackingStart) return sum;
-
-      return sum + item.profit;
+      return isCurrentMonth ? sum + item.profit : sum;
     }, 0);
-  }, [history]);
-
-  const currentMonthProfit = useMemo(() => {
-  const now = new Date();
-
-  const isBaseMonth =
-    now.getFullYear() === CURRENT_MONTH_BASE_YEAR &&
-    now.getMonth() === CURRENT_MONTH_BASE_MONTH;
-
-  if (!isBaseMonth) {
-    return currentMonthOperationsProfit;
-  }
-
-  return CURRENT_MONTH_BASE_PROFIT + (totals.profit - TOTAL_PROFIT_BASE);
-}, [totals.profit, currentMonthOperationsProfit]);
-    const now = new Date();
-    const isBaseMonth =
-      now.getFullYear() === CURRENT_MONTH_BASE_YEAR &&
-      now.getMonth() === CURRENT_MONTH_BASE_MONTH;
-
-    return (
-      (isBaseMonth ? CURRENT_MONTH_BASE_PROFIT : 0) +
-      currentMonthOperationsProfit
-    );
-  }, [currentMonthOperationsProfit]);
+  }, [history, totals.profit]);
 
   async function addProduct(product: Product): Promise<boolean> {
     const exists = products.some(
@@ -712,9 +690,18 @@ export default function Home() {
       .single();
 
     if (operationError) {
-      alert(
-        `Тауар саны сақталды, бірақ тарих жазылмады: ${operationError.message}`,
-      );
+      // Тарих жазылмаса, тауардағы өзгерісті де кері қайтарамыз.
+      // Осылайша өнім пайдасы мен операциялар тарихы екіге бөлініп кетпейді.
+      await supabase
+        .from("products")
+        .update(productToRow(currentProduct))
+        .eq(
+          currentProduct.id ? "id" : "code",
+          currentProduct.id ?? currentProduct.code,
+        );
+
+      alert(`Операция тарихын сақтау қатесі: ${operationError.message}`);
+      return false;
     }
 
     const normalized = rowToProduct(savedProduct as ProductRow);
@@ -839,7 +826,6 @@ export default function Home() {
     setHistory((current) =>
       current.filter((operation) => operation.id !== item.id),
     );
-    alert("Операция сәтті қайтарылды. Қалдық пен пайда жаңартылды.");
   }
 
   async function deleteProduct(code: string) {
@@ -965,15 +951,9 @@ export default function Home() {
               <p className="mt-1 text-sm text-slate-500">
                 ДАМУ жүйесінің жұмыс бөлімі
               </p>
-              <p className="mt-1 text-xs font-semibold text-emerald-700 md:hidden">
-                {APP_VERSION}
-              </p>
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="hidden rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 md:inline-flex">
-                {APP_VERSION}
-              </span>
               <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-sm">
                 {userEmail}
               </div>
@@ -992,7 +972,6 @@ export default function Home() {
               products={products}
               totals={totals}
               currentMonthProfit={currentMonthProfit}
-              currentMonthOperationsProfit={currentMonthOperationsProfit}
             />
           )}
 
@@ -1031,7 +1010,6 @@ export default function Home() {
               products={products}
               totalProfit={totals.profit}
               currentMonthProfit={currentMonthProfit}
-              currentMonthOperationsProfit={currentMonthOperationsProfit}
               history={history}
               onClearHistory={clearHistory}
               onUndoOperation={undoOperation}
@@ -1157,11 +1135,9 @@ function Dashboard({
   products,
   totals,
   currentMonthProfit,
-  currentMonthOperationsProfit,
 }: {
   products: Product[];
   currentMonthProfit: number;
-  currentMonthOperationsProfit: number;
   totals: {
     home: number;
     marketplaceTransit: number;
@@ -1181,7 +1157,7 @@ function Dashboard({
         <StatCard
           title={`${new Date().toLocaleDateString("kk-KZ", { month: "long" })} пайдасы`}
           value={`${money.format(currentMonthProfit)} ₸`}
-          note={`Жаңа операциялар: ${currentMonthOperationsProfit >= 0 ? "+" : ""}${money.format(currentMonthOperationsProfit)} ₸`}
+          note="Жалпы пайда өзгерісі бойынша"
         />
         <StatCard
           title="Үйдегі тауар"
@@ -1800,7 +1776,6 @@ function Profit({
   products,
   totalProfit,
   currentMonthProfit,
-  currentMonthOperationsProfit,
   history,
   onClearHistory,
   onUndoOperation,
@@ -1808,7 +1783,6 @@ function Profit({
   products: Product[];
   totalProfit: number;
   currentMonthProfit: number;
-  currentMonthOperationsProfit: number;
   history: OperationRecord[];
   onClearHistory: () => void;
   onUndoOperation: (item: OperationRecord) => Promise<void>;
@@ -1835,7 +1809,7 @@ function Profit({
         <StatCard
           title={`${new Date().toLocaleDateString("kk-KZ", { month: "long" })} пайдасы`}
           value={`${money.format(currentMonthProfit)} ₸`}
-          note={`Жаңа операциялар: ${currentMonthOperationsProfit >= 0 ? "+" : ""}${money.format(currentMonthOperationsProfit)} ₸`}
+          note="Бастапқы айлық пайда + жаңа сатылымдар"
         />
         <StatCard
           title="Тауар саны"
@@ -1882,7 +1856,7 @@ function Profit({
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
+            <table className="w-full min-w-[850px] text-left text-sm">
               <thead>
                 <tr className="border-b text-slate-500">
                   <th className="px-3 py-3">Күні</th>
@@ -2008,7 +1982,7 @@ function ImageUploader({
 }) {
   const [uploading, setUploading] = useState(false);
 
-  async function selectImage(event: ChangeEvent<HTMLInputElement>) {
+  async function selectImage(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 

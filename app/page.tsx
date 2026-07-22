@@ -368,9 +368,11 @@ const money = {
 
 const PROFIT_ADJUSTMENT = 15900; // Бұрынғы реестрдегі, бірақ нақты D-кодқа бөлінбеген пайда
 const CURRENT_MONTH_BASE_PROFIT = 758780; // ERP іске қосылғанға дейінгі 2026 жылғы шілде пайдасы
-const TOTAL_PROFIT_BASE = 1504780; // Сол сәттегі жалпы пайда
 const CURRENT_MONTH_BASE_YEAR = 2026;
 const CURRENT_MONTH_BASE_MONTH = 6; // JavaScript: шілде = 6
+// 758 780 ₸ бастапқы шілде пайдасы осы уақытқа дейінгі сатылымдарды қамтиды.
+// Осы уақыттан кейінгі операциялар ғана айлық пайдаға үстеме болып қосылады.
+const CURRENT_MONTH_BASE_CUTOFF = new Date("2026-07-22T00:00:00+05:00").getTime();
 
 export default function Home() {
   const [section, setSection] = useState<Section>("dashboard");
@@ -520,26 +522,28 @@ export default function Home() {
       now.getFullYear() === CURRENT_MONTH_BASE_YEAR &&
       now.getMonth() === CURRENT_MONTH_BASE_MONTH;
 
-    if (isBaseMonth) {
-      // Шілдедегі бастапқы 758 780 ₸ сомасына ERP-дегі жалпы пайданың
-      // 1 504 780 ₸ бастапқы мәнінен кейінгі нақты өзгерісін қосамыз.
-      // Number(...) Supabase numeric мәні мәтін болып келсе де,
-      // қосу амалының мәтінге айналып кетуіне жол бермейді.
-      const totalProfit = Number(totals.profit) || 0;
-      const profitDelta = totalProfit - TOTAL_PROFIT_BASE;
-      return CURRENT_MONTH_BASE_PROFIT + profitDelta;
-    }
+    const operationProfitForCurrentMonth = history.reduce((sum, item) => {
+      const createdAt = new Date(item.createdAt);
+      const createdAtTime = createdAt.getTime();
 
-    // Келесі айлардан бастап айлық пайда тек сол айдағы сатылымдардан есептеледі.
-    return history.reduce((sum, item) => {
-      const date = new Date(item.createdAt);
+      if (Number.isNaN(createdAtTime)) return sum;
+
       const isCurrentMonth =
-        date.getFullYear() === now.getFullYear() &&
-        date.getMonth() === now.getMonth();
+        createdAt.getFullYear() === now.getFullYear() &&
+        createdAt.getMonth() === now.getMonth();
 
-      return isCurrentMonth ? sum + item.profit : sum;
+      if (!isCurrentMonth) return sum;
+
+      // Бастапқы шілде сомасына бұрыннан кірген операцияларды қайта қоспаймыз.
+      if (isBaseMonth && createdAtTime < CURRENT_MONTH_BASE_CUTOFF) return sum;
+
+      return sum + (Number(item.profit) || 0);
     }, 0);
-  }, [history, totals.profit]);
+
+    return isBaseMonth
+      ? CURRENT_MONTH_BASE_PROFIT + operationProfitForCurrentMonth
+      : operationProfitForCurrentMonth;
+  }, [history]);
 
   async function addProduct(product: Product): Promise<boolean> {
     const exists = products.some(
